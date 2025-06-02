@@ -60,7 +60,11 @@ export const ReportModal: React.FC<ReportModalProps> = ({ submissions, onClose, 
                           <a href={s.depositSlipPreview} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">
                             {s.depositSlipFileName || 'Dekontu Gör'}
                           </a>
-                        ) : (s.depositSlipFileName || 'Dekont Yüklendi')
+                        ) : s.depositSlipFileName ? (
+                          `Dosya: ${s.depositSlipFileName} (Önizleme saklanmadı)`
+                        ) : (
+                          'Dekont bilgisi eksik'
+                        )
                       ) : (
                         s.explanation
                       )}

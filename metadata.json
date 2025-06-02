@@ -1,5 +1,5 @@
 {
-  "name": "Copy of Watsons Nakit Yönetimi",
+  "name": "Watsons Nakit Yönetimi",
   "description": "Watsons mağazaları için para yatırma işlemlerini takip etme, hatırlatmalar ve otomatik raporlama (simülasyon) sağlayan React uygulaması.",
   "requestFramePermissions": [
     "camera"

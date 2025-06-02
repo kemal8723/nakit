@@ -12,7 +12,8 @@ import {
   NOTIFICATION_ICON_URL,
   NOTIFICATION_SOUND_URL,
   NOTIFICATION_REPEAT_INTERVAL,
-  STORE_NAMES
+  STORE_NAMES,
+  MAX_BASE64_PREVIEW_STORAGE_LENGTH
 } from './constants';
 
 declare var XLSX: any; 
@@ -31,7 +32,7 @@ const generateAndSimulateSendReport = (
   reportDate: Date
 ): boolean => {
   if (typeof XLSX === 'undefined') {
-    console.error("XLSX library is not loaded. Cannot generate report.");
+    console.error("XLSX kütüphanesi yüklenemedi. Rapor oluşturulamıyor.");
     return false;
   }
 
@@ -84,10 +85,10 @@ const generateAndSimulateSendReport = (
     }
 
     XLSX.writeFile(wb, reportFileName);
-    console.log(`Simulated: XLSX report "${reportFileName}" generated and offered for download.`);
+    console.log(`Simülasyon: XLSX raporu "${reportFileName}" oluşturuldu ve indirilmek üzere sunuldu.`);
     return true;
   } catch (error) {
-    console.error("Error generating or writing XLSX file:", error);
+    console.error("XLSX dosyası oluşturulurken veya yazılırken hata:", error);
     return false;
   }
 };
@@ -103,15 +104,15 @@ const App: React.FC = () => {
   useEffect(() => {
     const registerServiceWorkerAndPermissions = () => {
       if ('serviceWorker' in navigator && 'Notification' in window) {
-        const swUrl = `${window.location.origin}/service-worker.js`;
-        console.log('SW: Preparing to register Service Worker (deferred) from URL:', swUrl);
+        const swUrl = 'service-worker.js'; // Use relative path
+        console.log('SW: Servis Çalışanını kaydetmeye hazırlanılıyor (ertelenmiş), URL:', swUrl);
 
         setTimeout(() => {
           if (navigator.serviceWorker) {
-            console.log('SW: Executing navigator.serviceWorker.register (deferred). URL:', swUrl);
-            navigator.serviceWorker.register(swUrl)
+            console.log('SW: navigator.serviceWorker.register yürütülüyor (ertelenmiş). URL:', swUrl);
+            navigator.serviceWorker.register(swUrl) // No need for window.location.origin
               .then(registration => {
-                console.log('Service Worker registered with scope:', registration.scope);
+                console.log('Servis Çalışanı kaydedildi, kapsam:', registration.scope);
 
                 const sendInitialStateToWorker = (sw: ServiceWorker) => {
                   const todayStr = getTodayDateString();
@@ -125,10 +126,10 @@ const App: React.FC = () => {
                           depositSlipFile: undefined
                       })).filter((s: Submission | null) => s !== null && s.submittedAt instanceof Date && !isNaN(s.submittedAt.getTime()));
                     } catch (e) {
-                      console.error("App: Error parsing submissions for SW INIT_STATE:", e);
+                      console.error("App: SW INIT_STATE için gönderimler ayrıştırılırken hata:", e);
                     }
                   }
-                  console.log('SW: Sending INIT_STATE to service worker.');
+                  console.log('SW: INIT_STATE servis çalışanına gönderiliyor.');
                   sw.postMessage({
                     type: 'INIT_STATE',
                     data: {
@@ -146,19 +147,19 @@ const App: React.FC = () => {
                 };
 
                 if (registration.active) {
-                  console.log('SW: Service worker already active. Sending INIT_STATE.');
+                  console.log('SW: Servis çalışanı zaten aktif. INIT_STATE gönderiliyor.');
                   sendInitialStateToWorker(registration.active);
                 }
                 else if (registration.installing) {
                   const installingWorker = registration.installing;
-                  console.log('SW: Service worker installing. Adding statechange listener.');
+                  console.log('SW: Servis çalışanı yükleniyor. Statechange dinleyicisi ekleniyor.');
                   installingWorker.addEventListener('statechange', function swStateListener() {
                     if (installingWorker.state === 'activated') {
-                      console.log('SW: Service worker activated via installing worker.');
+                      console.log('SW: Servis çalışanı yüklenen çalışan üzerinden etkinleştirildi.');
                       if (registration.active) {
                         sendInitialStateToWorker(registration.active);
                       } else {
-                        console.warn('SW activated via installing worker, but registration.active is null. Using the worker instance directly.');
+                        console.warn('SW yüklenen çalışan üzerinden etkinleştirildi, ancak registration.active null. Çalışan örneği doğrudan kullanılıyor.');
                         sendInitialStateToWorker(installingWorker);
                       }
                       installingWorker.removeEventListener('statechange', swStateListener);
@@ -166,14 +167,14 @@ const App: React.FC = () => {
                   });
                 }
                 else if (navigator.serviceWorker.controller) {
-                   console.log('SW: A controller already exists. Sending INIT_STATE to current page controller.');
+                   console.log('SW: Bir denetleyici zaten mevcut. INIT_STATE mevcut sayfa denetleyicisine gönderiliyor.');
                   sendInitialStateToWorker(navigator.serviceWorker.controller);
                 }
                  else {
-                  console.warn("SW: Service worker from this registration is not immediately active or installing, and no current controller. Waiting for controllerchange.");
+                  console.warn("SW: Bu kayıttan servis çalışanı hemen aktif veya yüklenmiyor ve mevcut denetleyici yok. Controllerchange bekleniyor.");
                   const controllerChangeListener = () => {
                       if (navigator.serviceWorker.controller) {
-                          console.log('SW: Controller became available after controllerchange event. Sending INIT_STATE.');
+                          console.log('SW: Denetleyici controllerchange olayı sonrası kullanılabilir oldu. INIT_STATE gönderiliyor.');
                           sendInitialStateToWorker(navigator.serviceWorker.controller);
                           navigator.serviceWorker.removeEventListener('controllerchange', controllerChangeListener);
                       }
@@ -182,34 +183,34 @@ const App: React.FC = () => {
                 }
               })
               .catch(error => {
-                console.error('Service Worker registration failed (deferred):', error, 'Attempted URL:', swUrl);
+                console.error('Servis Çalışanı kaydı başarısız oldu (ertelenmiş):', error, 'Denenen URL:', swUrl);
               });
           } else {
-             console.error('SW: navigator.serviceWorker is not available for registration (deferred), though "serviceWorker" in navigator is true.');
+             console.error('SW: navigator.serviceWorker kayıt için uygun değil (ertelenmiş), "serviceWorker" in navigator true olmasına rağmen.');
           }
         }, 0); 
 
         Notification.requestPermission().then(permission => {
           setNotificationPermission(permission);
           if (permission !== 'granted') {
-            console.warn('Notification permission not granted initially. User can enable via button.');
+            console.warn('Bildirim izni başlangıçta verilmedi. Kullanıcı buton aracılığıyla etkinleştirebilir.');
           } else {
-            console.log('Notification permission granted initially.');
+            console.log('Bildirim izni başlangıçta verildi.');
           }
         });
       } else {
-        console.warn('Service Workers or Notifications API not supported in this browser.');
+        console.warn('Servis Çalışanları veya Bildirimler API\'si bu tarayıcıda desteklenmiyor.');
       }
     };
 
     if (document.readyState === 'complete') {
-      console.log('Document already complete. Registering SW and permissions.');
+      console.log('Belge zaten tamamlandı. SW ve izinler kaydediliyor.');
       registerServiceWorkerAndPermissions();
     } else {
-      console.log('Document not complete. Adding load event listener for SW registration.');
+      console.log('Belge tamamlanmadı. SW kaydı için yükleme olayı dinleyicisi ekleniyor.');
       window.addEventListener('load', registerServiceWorkerAndPermissions);
       return () => {
-        console.log('Removing load event listener for SW registration.');
+        console.log('SW kaydı için yükleme olayı dinleyicisi kaldırılıyor.');
         window.removeEventListener('load', registerServiceWorkerAndPermissions);
       };
     }
@@ -227,12 +228,12 @@ const App: React.FC = () => {
         const parsedSubmissions: Submission[] = JSON.parse(loadedSubmissions).map((s: any, index: number) => {
           try {
             if (!s || typeof s.storeName !== 'string' || typeof s.reminderId !== 'string' || typeof s.status !== 'string' || !s.submittedAt) {
-              console.warn(`App: Loaded submission at index ${index} is missing critical fields or has incorrect types, skipping:`, s);
+              console.warn(`App: Yüklenen ${index}. gönderim kritik alanları eksik veya yanlış türlere sahip, atlanıyor:`, s);
               return null;
             }
             const submittedAtDate = new Date(s.submittedAt);
             if (isNaN(submittedAtDate.getTime())) {
-              console.warn(`App: Loaded submission at index ${index} has an invalid 'submittedAt' date, skipping:`, s);
+              console.warn(`App: Yüklenen ${index}. gönderim geçersiz bir 'submittedAt' tarihine sahip, atlanıyor:`, s);
               return null;
             }
             return {
@@ -248,14 +249,14 @@ const App: React.FC = () => {
               depositSlipFile: undefined 
             };
           } catch (mapError) {
-            console.error(`App: Error processing loaded submission at index ${index}:`, s, mapError);
+            console.error(`App: Yüklenen ${index}. gönderim işlenirken hata:`, s, mapError);
             return null; 
           }
         }).filter((s: Submission | null): s is Submission => s !== null);
         setSubmissions(parsedSubmissions);
       }
     } catch (error) {
-        console.error("App: Error loading submissions from localStorage:", error);
+        console.error("App: localStorage'dan gönderimler yüklenirken hata:", error);
         localStorage.removeItem(`submissions_${todayStr}`);
     }
 
@@ -265,7 +266,7 @@ const App: React.FC = () => {
           setReportSentToday(true);
         }
     } catch (error) {
-        console.error("App: Error loading report status from localStorage:", error);
+        console.error("App: localStorage'dan rapor durumu yüklenirken hata:", error);
         localStorage.removeItem(`reportSent_${todayStr}`);
     }
 
@@ -276,8 +277,8 @@ const App: React.FC = () => {
     try {
       const validSubmissions = submissions.filter(s => s.storeName && s.reminderId && s.status && s.submittedAt);
       localStorage.setItem(`submissions_${getTodayDateString()}`, JSON.stringify(validSubmissions));
-    } catch (error) {
-      console.error("App: Error saving submissions to localStorage:", error);
+    } catch (error: any) {
+      console.error("App: Gönderimler localStorage'a kaydedilirken hata:", error.name, error.message, error);
       alert("Veriler kaydedilirken bir depolama hatası oluştu. Bazı veriler kaybolmuş olabilir. Lütfen konsolu kontrol edin veya geliştiriciye bildirin.");
     }
   }, [submissions]);
@@ -286,28 +287,28 @@ const App: React.FC = () => {
     try {
       localStorage.setItem(`reportSent_${getTodayDateString()}`, reportSentToday.toString());
     } catch (error) {
-        console.error("App: Error saving report status to localStorage:", error);
+        console.error("App: Rapor durumu localStorage'a kaydedilirken hata:", error);
     }
   }, [reportSentToday]);
 
   const submissionsForCurrentDay = useMemo(() => {
-    const currentDayStr = getTodayDateString(); 
+    const currentDayStr = getTodayDateString(); // Use YYYY-MM-DD for consistent comparison
     return submissions.filter(s => {
       try {
-        // s.submittedAt should already be a Date object from the loading logic
         if (!s || !s.submittedAt || !(s.submittedAt instanceof Date) || isNaN(s.submittedAt.getTime())) {
           // console.warn("App: submissionsForCurrentDay - Invalid submission object or submittedAt date:", s);
           return false; 
         }
-        const submissionDate = s.submittedAt; // Use the Date object directly
+        const submissionDate = new Date(s.submittedAt);
+        // Re-normalize submissionDate to YYYY-MM-DD string for comparison
         const submissionDateStr = `${submissionDate.getFullYear()}-${(submissionDate.getMonth() + 1).toString().padStart(2, '0')}-${submissionDate.getDate().toString().padStart(2, '0')}`;
         return submissionDateStr === currentDayStr;
       } catch (filterError) {
-        console.error(`App: Error processing submission in filter for submissionsForCurrentDay:`, s, filterError);
+        console.error(`App: submissionsForCurrentDay filtresinde gönderim işlenirken hata:`, s, filterError);
         return false;
       }
     });
-  }, [submissions, currentTime]); 
+  }, [submissions, currentTime]); // currentTime is still needed to trigger re-calc on minute changes for slot active status, but date comparison is now more robust.
 
   const checkReportTime = useCallback(() => {
     const currentHour = currentTime.getHours();
@@ -317,7 +318,7 @@ const App: React.FC = () => {
     if (HHMM === REPORT_TIME && !reportSentToday) {
       if (typeof XLSX === 'undefined') {
         alert(`Saat ${REPORT_TIME}. Rapor oluşturulamadı: XLSX kütüphanesi yüklenmemiş. Lütfen 'index.html' dosyasına ilgili script etiketini ekleyin veya geliştiriciye bildirin.`);
-        console.error("XLSX library is not loaded. Cannot generate report.");
+        console.error("XLSX kütüphanesi yüklenemedi. Rapor oluşturulamıyor.");
         return;
       }
 
@@ -341,66 +342,76 @@ const App: React.FC = () => {
 
   const handleSaveSubmission = (submissionData: Omit<Submission, 'id' | 'submittedAt'>) => {
     const originalFile = submissionData.depositSlipFile; 
-    console.log('App: handleSaveSubmission: received data (File object metadata logged if present):', {
+    console.log('App: handleSaveSubmission: alınan veri (Dosya nesnesi meta verisi varsa loglanır):', {
         ...submissionData,
         depositSlipFile: originalFile ? { name: originalFile.name, type: originalFile.type, size: originalFile.size, lastModified: originalFile.lastModified } : undefined,
         depositSlipPreview: submissionData.depositSlipPreview ? submissionData.depositSlipPreview.substring(0, 100) + '...' : undefined
     });
 
-    const newSubmissionForState: Submission = {
+    const submissionToPersist: Submission = {
       ...submissionData, 
       id: `${submissionData.storeName}-${submissionData.reminderId}-${getTodayDateString()}-${Date.now()}`,
       submittedAt: new Date(),
-      depositSlipFile: undefined, 
+      depositSlipFile: undefined, // Actual file object is not persisted in state/localStorage
+      // depositSlipPreview and depositSlipFileName are from submissionData
     };
 
-    console.log('App: handleSaveSubmission: newSubmission object prepared for state (depositSlipFile is undefined):', {
-        ...newSubmissionForState,
-        depositSlipPreview: newSubmissionForState.depositSlipPreview ? newSubmissionForState.depositSlipPreview.substring(0, 100) + '...' : undefined
+    // Check if preview is too large for localStorage
+    if (submissionToPersist.depositSlipPreview &&
+        submissionToPersist.depositSlipPreview.length > MAX_BASE64_PREVIEW_STORAGE_LENGTH) {
+      console.warn(
+        `App: Dekont önizlemesi (${submissionToPersist.depositSlipPreview.length} karakter) localStorage için çok büyük. Kaldırılıyor. Dosya Adı: ${submissionToPersist.depositSlipFileName}`
+      );
+      submissionToPersist.depositSlipPreview = undefined; // Remove large preview, keep filename
+    }
+
+    console.log('App: handleSaveSubmission: durum için hazırlanan gönderim nesnesi (gerekirse önizleme kaldırıldı):', {
+        ...submissionToPersist,
+        depositSlipPreview: submissionToPersist.depositSlipPreview ? submissionToPersist.depositSlipPreview.substring(0, 100) + '...' : undefined
     });
 
     try {
         setSubmissions(prevSubmissions => {
-          console.log('App: setSubmissions: updating submissions. Previous length:', prevSubmissions.length);
-          const submissionDateString = getTodayDateString(); 
+          console.log('App: setSubmissions: gönderimler güncelleniyor. Önceki sayı:', prevSubmissions.length);
+          const submissionDateString = getTodayDateString(); // Date for comparison
 
           const existingIndex = prevSubmissions.findIndex(
-            s => s.storeName === newSubmissionForState.storeName &&
-                 s.reminderId === newSubmissionForState.reminderId && 
+            s => s.storeName === submissionToPersist.storeName &&
+                 s.reminderId === submissionToPersist.reminderId && 
                  s.submittedAt instanceof Date && !isNaN(s.submittedAt.getTime()) &&
                  `${s.submittedAt.getFullYear()}-${(s.submittedAt.getMonth() + 1).toString().padStart(2, '0')}-${s.submittedAt.getDate().toString().padStart(2, '0')}` === submissionDateString
           );
           let updatedSubmissions;
           if (existingIndex > -1) {
             updatedSubmissions = [...prevSubmissions];
-            updatedSubmissions[existingIndex] = newSubmissionForState;
-            console.log('App: setSubmissions: updated existing submission at index', existingIndex, 'for store', newSubmissionForState.storeName, 'slot', newSubmissionForState.reminderId);
+            updatedSubmissions[existingIndex] = submissionToPersist;
+            console.log('App: setSubmissions: mevcut gönderim güncellendi, index', existingIndex, 'mağaza', submissionToPersist.storeName, 'slot', submissionToPersist.reminderId);
           } else {
-            updatedSubmissions = [...prevSubmissions, newSubmissionForState];
-            console.log('App: setSubmissions: added new submission. New length:', updatedSubmissions.length);
+            updatedSubmissions = [...prevSubmissions, submissionToPersist];
+            console.log('App: setSubmissions: yeni gönderim eklendi. Yeni sayı:', updatedSubmissions.length);
           }
           return updatedSubmissions;
         });
     } catch (error) {
-        console.error("App: handleSaveSubmission: Error during setSubmissions call:", error);
+        console.error("App: handleSaveSubmission: setSubmissions çağrısı sırasında hata:", error);
         alert("Veri kaydedilirken bir uygulama hatası oluştu (setSubmissions). Lütfen konsolu kontrol edin veya geliştiriciye bildirin.");
         return; 
     }
-    console.log('App: handleSaveSubmission: setSubmissions call completed.');
+    console.log('App: handleSaveSubmission: setSubmissions çağrısı tamamlandı.');
 
     if (navigator.serviceWorker.controller) {
-      console.log('App: Sending SUBMISSION_MADE to service worker controller.');
+      console.log('App: SUBMISSION_MADE servis çalışanı denetleyicisine gönderiliyor.');
       navigator.serviceWorker.controller.postMessage({
         type: 'SUBMISSION_MADE',
         data: {
-          reminderId: newSubmissionForState.reminderId, 
+          reminderId: submissionToPersist.reminderId, 
           date: getTodayDateString(),
         }
       });
     } else {
-       console.warn('App: No service worker controller available to send SUBMISSION_MADE.');
+       console.warn('App: SUBMISSION_MADE göndermek için servis çalışanı denetleyicisi yok.');
     }
-    console.log('App: handleSaveSubmission: finished successfully.');
+    console.log('App: handleSaveSubmission: başarıyla tamamlandı.');
   };
 
   const handleRequestNotificationPermission = () => {
@@ -408,9 +419,9 @@ const App: React.FC = () => {
       Notification.requestPermission().then(permission => {
         setNotificationPermission(permission);
         if (permission === 'granted') {
-          console.log('Notification permission granted by user action.');
+          console.log('Bildirim izni kullanıcı eylemiyle verildi.');
         } else {
-          console.warn('Notification permission not granted by user action.');
+          console.warn('Bildirim izni kullanıcı eylemiyle verilmedi.');
         }
       });
     }

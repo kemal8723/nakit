@@ -3,22 +3,22 @@
   "name": "Watsons Nakit Yönetimi",
   "icons": [
     {
-      "src": "/icon-192x192.png",
+      "src": "icon-192x192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512x512.png",
+      "src": "icon-512x512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
     }
   ],
-  "start_url": "/",
+  "start_url": ".",
   "background_color": "#0f172a",
   "display": "standalone",
-  "scope": "/",
+  "scope": ".",
   "theme_color": "#0ea5e9",
   "description": "Watsons mağazaları için para yatırma işlemlerini takip etme ve hatırlatmalar."
 }

@@ -215,7 +215,10 @@ export const ReminderCard: React.FC<ReminderCardProps> = ({
             <img src={storeSpecificExistingSubmission.depositSlipPreview} alt="Dekont Önizleme" className="mt-2 mx-auto h-24 object-contain rounded" />
           )}
           {storeSpecificExistingSubmission.status === DepositStatus.DEPOSITED && storeSpecificExistingSubmission.depositSlipFileName && (
-             <p className="text-xs text-gray-400 mt-1">Dosya: {storeSpecificExistingSubmission.depositSlipFileName}</p>
+             <p className="text-xs text-gray-400 mt-1">
+               Dosya Adı: {storeSpecificExistingSubmission.depositSlipFileName}
+               {!storeSpecificExistingSubmission.depositSlipPreview && " (Önizleme büyük olduğu için saklanmadı)"}
+             </p>
           )}
           {storeSpecificExistingSubmission.status === DepositStatus.NOT_DEPOSITED && (
             <p className="text-gray-300 mt-1">Açıklama: {storeSpecificExistingSubmission.explanation}</p>

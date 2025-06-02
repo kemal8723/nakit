@@ -11,9 +11,14 @@ export const REPORT_EMAIL_RECIPIENT = 'kemalg@watsons.com.tr';
 
 export const APP_TITLE = 'Watsons Nakit Yönetimi';
 
-export const NOTIFICATION_ICON_URL = '/icon-192x192.png';
-export const NOTIFICATION_SOUND_URL = '/notification.mp3';
+export const NOTIFICATION_ICON_URL = 'icon-192x192.png'; // Relative path
+export const NOTIFICATION_SOUND_URL = 'notification.mp3'; // Relative path
 export const NOTIFICATION_REPEAT_INTERVAL = 30 * 60 * 1000; // 30 minutes
+
+// Max length for base64 image preview string to be stored in localStorage.
+// Approx 0.75MB base64 string -> ~0.5MB image. This helps prevent QuotaExceededError.
+export const MAX_BASE64_PREVIEW_STORAGE_LENGTH = 750000;
+
 
 const rawStoreNames: string[] = [
   "KIPA CIGLI",
