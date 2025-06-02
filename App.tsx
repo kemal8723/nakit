@@ -103,7 +103,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const registerServiceWorkerAndPermissions = () => {
-      if ('serviceWorker' in navigator && 'Notification' in window) {
+      if ('serviceWorker' in navigator) {
         const swUrl = 'service-worker.js'; // Use relative path
         console.log('SW: Servis Çalışanını kaydetmeye hazırlanılıyor (ertelenmiş), URL:', swUrl);
 
@@ -189,17 +189,18 @@ const App: React.FC = () => {
              console.error('SW: navigator.serviceWorker kayıt için uygun değil (ertelenmiş), "serviceWorker" in navigator true olmasına rağmen.');
           }
         }, 0); 
-
-        Notification.requestPermission().then(permission => {
-          setNotificationPermission(permission);
-          if (permission !== 'granted') {
-            console.warn('Bildirim izni başlangıçta verilmedi. Kullanıcı buton aracılığıyla etkinleştirebilir.');
-          } else {
-            console.log('Bildirim izni başlangıçta verildi.');
-          }
-        });
       } else {
-        console.warn('Servis Çalışanları veya Bildirimler API\'si bu tarayıcıda desteklenmiyor.');
+         console.warn('Servis Çalışanları bu tarayıcıda desteklenmiyor.');
+      }
+
+      if ('Notification' in window) {
+        // Set initial permission state without prompting.
+        // The button click handler (handleRequestNotificationPermission) will now be
+        // the primary way to request permission if it's 'default'.
+        setNotificationPermission(Notification.permission);
+        console.log('Başlangıçtaki bildirim izni durumu:', Notification.permission);
+      } else {
+        console.warn('Bildirimler API\'si bu tarayıcıda desteklenmiyor.');
       }
     };
 
@@ -420,6 +421,24 @@ const App: React.FC = () => {
         setNotificationPermission(permission);
         if (permission === 'granted') {
           console.log('Bildirim izni kullanıcı eylemiyle verildi.');
+          // Potentially re-send INIT_STATE to SW if it was missed due to late permission
+           if (navigator.serviceWorker.controller) {
+             console.log('SW: İzin verildikten sonra INIT_STATE tekrar gönderiliyor.');
+              navigator.serviceWorker.controller.postMessage({
+                type: 'INIT_STATE', // Re-send to ensure SW has correct state if permission was just granted
+                 data: {
+                      reminderSlots: REMINDER_SLOTS,
+                      reportTime: REPORT_TIME,
+                      appTitle: APP_TITLE,
+                      notificationIconUrl: NOTIFICATION_ICON_URL,
+                      notificationSoundUrl: NOTIFICATION_SOUND_URL,
+                      notificationRepeatInterval: NOTIFICATION_REPEAT_INTERVAL,
+                      submissions: submissionsForCurrentDay, // Send current day's submissions
+                      currentDateString: getTodayDateString(),
+                      currentDate: new Date().toISOString(),
+                    }
+              });
+           }
         } else {
           console.warn('Bildirim izni kullanıcı eylemiyle verilmedi.');
         }
